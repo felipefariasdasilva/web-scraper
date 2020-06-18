@@ -1,61 +1,41 @@
 package com.embraer;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.gargoylesoftware.htmlunit.WebClient;
 import com.gargoylesoftware.htmlunit.html.HtmlAnchor;
-import com.gargoylesoftware.htmlunit.html.HtmlElement;
 import com.gargoylesoftware.htmlunit.html.HtmlPage;
-
-import java.math.BigDecimal;
-import java.net.URLEncoder;
-import java.util.List;
+import com.gargoylesoftware.htmlunit.util.Cookie;
 
 public class App 
 {
     public static void main( String[] args )
     {
-        String searchQuery = "Iphone 6s";
-        String baseUrl = "https://newyork.craigslist.org/" ;
-        WebClient client = new WebClient();
-        client.getOptions().setCssEnabled(false);
-        client.getOptions().setJavaScriptEnabled(false);
-        try{
-            String searchUrl = baseUrl +
-                    "search/sss?sort=rel&query=" +
-                    URLEncoder.encode(searchQuery, "UTF-8");
+        SearchWithQuery searchWithQuery = new SearchWithQuery();
+        ScrapAutoLogin scrapAutoLogin = new ScrapAutoLogin();
 
-            HtmlPage page = client.getPage(searchUrl);
+        String baseUrl = "https://news.ycombinator.com" ;
+        String loginUrl = baseUrl + "/login?goto=news" ;
+        String login = "";
+        String password = "" ;
 
-            List<HtmlElement> items = (List<HtmlElement>) page.getByXPath("//li[@class='result-row']");
-            if(items.isEmpty()){
-                System.out.println("no items found!");
-            }else{
-                for(HtmlElement htmlItem : items){
-                    HtmlAnchor itemAnchor = ((HtmlAnchor) htmlItem.getFirstByXPath(".//p[@class='result-info']/a"));
+        String mtcUrl = "https://www.techcare.embraer.com/irj/portal";
 
-                    HtmlElement spanPrice = ((HtmlElement)
-                            htmlItem.getFirstByXPath(".//a/span[@class='result-price']")) ;
+        try {
+            System.out.println("Starting autoLogin on " + mtcUrl);
+            WebClient client = scrapAutoLogin.autoLogin(mtcUrl, login, password);
+            HtmlPage page = client.getPage(baseUrl) ;
 
-                    // It is possible that an item doesn't have any
-                    //price, we set the price to 0.0 in this case
-                    String itemPrice = spanPrice == null ? "0.0" :
-                            spanPrice.asText() ;
-
-                    Item item = new Item();
-
-                    item.setTitle(itemAnchor.asText());
-                    item.setUrl( baseUrl + itemAnchor.getHrefAttribute());
-
-                    item.setPrice(new BigDecimal(itemPrice.replace("$", "")));
-
-                    ObjectMapper mapper = new ObjectMapper();
-                    String jsonString =
-                            mapper.writeValueAsString(item) ;
-
-                    System.out.println(jsonString);
+            HtmlAnchor logoutLink = page.getFirstByXPath(String.format("//a[@href='user?id=%s']", login)) ;
+            if(logoutLink != null ){
+                System.out.println("Successfuly logged in !");
+                // printing the cookies
+                for(Cookie cookie : client.getCookieManager().getCookies()){
+                    System.out.println(cookie.toString());
                 }
+            }else{
+                System.err.println("Wrong credentials");
             }
-        }catch (Exception e){
+
+        } catch (Exception e) {
             e.printStackTrace();
         }
     }
